@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.font-sans {
+  font-family: "Leelawadee UI", Tahoma, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  body,
+  #root,
+  .min-h-screen {
+    background: #fff !important;
+    color: #111827 !important;
+    min-height: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .grid {
+    display: block !important;
+  }
+
+  .print-only {
+    display: block !important;
+    color: #111827 !important;
+  }
+
+  .bg-slate-900,
+  .bg-slate-950,
+  .bg-slate-950\/60 {
+    background: #fff !important;
+  }
+
+  .border-slate-800,
+  .border-slate-800\/80 {
+    border-color: #d1d5db !important;
+  }
+
+  .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  .text-slate-100,
+  .text-slate-200,
+  .text-slate-300,
+  .text-slate-400,
+  .text-cyan-400,
+  .text-cyan-300,
+  .text-emerald-400,
+  .text-purple-400 {
+    color: #111827 !important;
+  }
+
+  svg {
+    max-height: 160mm;
+    background: #fff !important;
+    border-color: #d1d5db !important;
+  }
+
+  svg text {
+    fill: #111827 !important;
+  }
+
+  svg rect {
+    fill: #fff !important;
+  }
+
+  table {
+    break-inside: avoid;
+  }
+}
