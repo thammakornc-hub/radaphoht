@@ -417,12 +417,9 @@ export default function App() {
   const [hoveredStation, setHoveredStation] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
-    toleranceA: '4',
-    toleranceB: '4',
     confidence: '95',
     precision: 4,
-    residualUnit: 'mm',
-    jobReference: ''
+    residualUnit: 'mm'
   });
 
   const bmFileInput = useRef(null);
@@ -508,7 +505,6 @@ export default function App() {
       ['Standard Error of Unit Weight (s0)', results.s0.toFixed(6)],
       ['Redundancy (Degrees of Freedom)', results.dof],
       ['Sum of Weighted Residuals (VTPV)', results.vtpv.toFixed(6)],
-      ['Survey tolerance constants (a, b)', settings.toleranceA, settings.toleranceB],
       ['Confidence level (%)', settings.confidence],
       [],
       ['--- ADJUSTED STATION ELEVATIONS ---'],
@@ -1233,18 +1229,10 @@ export default function App() {
           }}>
             <section role="dialog" aria-modal="true" aria-labelledby="settings-title" className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
               <div className="mb-4 flex items-center justify-between">
-                <h2 id="settings-title" className="text-sm font-bold uppercase tracking-wide text-cyan-400">Survey Settings</h2>
+                <h2 id="settings-title" className="text-sm font-bold uppercase tracking-wide text-cyan-400">SETTING</h2>
                 <button onClick={() => setSettingsOpen(false)} aria-label="Close settings" className="px-2 text-slate-400 hover:text-white">✕</button>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <label className="space-y-1 text-xs text-slate-300">
-                  <span>Standard error constant a</span>
-                  <input type="number" min="0" step="any" value={settings.toleranceA} onChange={(event) => updateSetting('toleranceA', event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
-                </label>
-                <label className="space-y-1 text-xs text-slate-300">
-                  <span>Standard error constant b</span>
-                  <input type="number" min="0" step="any" value={settings.toleranceB} onChange={(event) => updateSetting('toleranceB', event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
-                </label>
                 <label className="space-y-1 text-xs text-slate-300">
                   <span>Confidence level</span>
                   <select value={settings.confidence} onChange={(event) => updateSetting('confidence', event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
@@ -1267,12 +1255,7 @@ export default function App() {
                     <option value="m">Meters (m)</option>
                   </select>
                 </label>
-                <label className="space-y-1 text-xs text-slate-300 sm:col-span-2">
-                  <span>Job reference</span>
-                  <input type="text" value={settings.jobReference} onChange={(event) => updateSetting('jobReference', event.target.value)} placeholder="Optional project or survey reference" className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
-                </label>
               </div>
-              <p className="mt-4 text-[11px] leading-relaxed text-amber-300">The a/b constants are saved for reporting. The existing blunder test is unchanged until a survey tolerance formula and units are specified.</p>
               <div className="mt-5 flex justify-end">
                 <button onClick={() => setSettingsOpen(false)} className="rounded-lg bg-cyan-600 px-4 py-2 text-xs font-semibold text-white hover:bg-cyan-500">Done</button>
               </div>
@@ -1284,7 +1267,6 @@ export default function App() {
           <div className="print-only mb-4">
             <h2 className="text-lg font-bold">RADAPHOHT — Survey Adjustment Report</h2>
             <p>Generated {reportGeneratedAt} · Confidence level: {settings.confidence}%</p>
-            <p>Tolerance constants: a = {settings.toleranceA}, b = {settings.toleranceB}</p>
           </div>
         )}
 
