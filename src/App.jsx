@@ -242,7 +242,7 @@ function NetworkDiagram({ benchmarks, levelRuns, results, hoveredRunId, hoveredS
             <span className="w-2.5 h-2.5 bg-cyan-500 rounded-full inline-block"></span> Unknown BM
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 bg-rose-500 rounded-full inline-block"></span> Blunder
+            <span className="w-2.5 h-2.5 bg-rose-500 rounded-full inline-block"></span> FLAG
           </span>
         </div>
       </div>
@@ -417,6 +417,8 @@ export default function App() {
   const [hoveredStation, setHoveredStation] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
+    toleranceA: '4',
+    toleranceB: '4',
     confidence: '95',
     precision: 4,
     residualUnit: 'mm'
@@ -505,6 +507,7 @@ export default function App() {
       ['Standard Error of Unit Weight (s0)', results.s0.toFixed(6)],
       ['Redundancy (Degrees of Freedom)', results.dof],
       ['Sum of Weighted Residuals (VTPV)', results.vtpv.toFixed(6)],
+      ['Standard error constants (a, b)', settings.toleranceA, settings.toleranceB],
       ['Confidence level (%)', settings.confidence],
       [],
       ['--- ADJUSTED STATION ELEVATIONS ---'],
@@ -522,7 +525,7 @@ export default function App() {
       ...results.residuals.map((run) => [
         `#${run.id}`, run.from, run.to, run.dh,
         (run.v_mm / 1000 * residualScale).toFixed(settings.precision),
-        run.weight, run.isBlunder ? 'BLUNDER' : 'OK'
+        run.weight, run.isBlunder ? 'FLAG' : 'OK'
       ])
     ];
 
@@ -580,7 +583,8 @@ export default function App() {
       const summary = [
         ['Standard Error of Unit Weight (s0)', results.s0],
         ['Redundancy (R)', results.dof],
-        ['Sum of Weighted Squared Residuals (ΣPV²)', results.vtpv]
+        ['Sum of Weighted Squared Residuals (ΣPV²)', results.vtpv],
+        ['Blunder test (a mm, b mm/√km, confidence %)', `${settings.toleranceA}, ${settings.toleranceB}, ${settings.confidence}`]
       ];
       summary.forEach(([label, value], index) => {
         const rowNumber = index + 4;
@@ -673,7 +677,7 @@ export default function App() {
           run.dh,
           run.v_mm,
           run.weight,
-          run.isBlunder ? 'BLUNDER' : 'OK'
+          run.isBlunder ? 'FLAG' : 'OK'
         ];
         row.eachCell((cell, columnNumber) => {
           cell.fill = {
@@ -894,7 +898,7 @@ export default function App() {
           run.dh.toFixed(4),
           run.v_mm.toFixed(4),
           run.weight.toFixed(4),
-          run.isBlunder ? 'BLUNDER' : 'OK'
+          run.isBlunder ? 'FLAG' : 'OK'
         ]),
         theme: 'grid',
         styles: {
@@ -1006,6 +1010,16 @@ export default function App() {
     setReportGeneratedAt('');
 
     try {
+      const toleranceA = Number(settings.toleranceA);
+      const toleranceB = Number(settings.toleranceB);
+      const confidenceZScores = { 90: 1.645, 95: 1.960, 99: 2.576 };
+      const zCrit = confidenceZScores[settings.confidence];
+      if (settings.toleranceA.trim() === '' || settings.toleranceB.trim() === '' ||
+          !Number.isFinite(toleranceA) || toleranceA < 0 || !Number.isFinite(toleranceB) || toleranceB < 0 || !zCrit) {
+        setErrorMsg('Enter valid non-negative standard error constants and select a supported confidence level.');
+        return;
+      }
+
       const fixedBMs = {};
       benchmarks.forEach(b => {
         const name = b.name.trim();
@@ -1142,8 +1156,11 @@ export default function App() {
         const v_m = V[idx];
         const v_mm = v_m * 1000;
         const p = P[idx];
-        const threshold = dof > 0 && s0 > 0 ? (2.5 * s0 / Math.sqrt(p)) : 0.01;
-        const isBlunder = Math.abs(v_m) > threshold;
+        const runLengthKm = run.weightType === 'Distance (km)' ? Number(run.weightVal) : NaN;
+        const toleranceMm = Number.isFinite(runLengthKm) && runLengthKm >= 0
+          ? (toleranceA + toleranceB * Math.sqrt(runLengthKm)) * (zCrit / 1.960)
+          : toleranceA * zCrit;
+        const isBlunder = Math.abs(v_mm) > toleranceMm;
 
         return {
           id: run.order,
@@ -1234,11 +1251,22 @@ export default function App() {
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="space-y-1 text-xs text-slate-300">
+                  <span>Standard error constant a (mm)</span>
+                  <input type="number" min="0" step="any" value={settings.toleranceA} onChange={(event) => updateSetting('toleranceA', event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
+                </label>
+                <label className="space-y-1 text-xs text-slate-300">
+                  <span>Standard error constant b (mm/√km)</span>
+                  <input type="number" min="0" step="any" value={settings.toleranceB} onChange={(event) => updateSetting('toleranceB', event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
+                </label>
+                <p className="sm:col-span-2 text-[11px] leading-relaxed text-slate-400">
+                  Distance-based tolerance: (a + b × √L) × (Zcrit / 1.960). Without distance: a × Zcrit.
+                </p>
+                <label className="space-y-1 text-xs text-slate-300">
                   <span>Confidence level</span>
                   <select value={settings.confidence} onChange={(event) => updateSetting('confidence', event.target.value)} className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
-                    <option value="90">90%</option>
-                    <option value="95">95%</option>
-                    <option value="99">99%</option>
+                    <option value="90">90% (α = 0.10)</option>
+                    <option value="95">95% (α = 0.05)</option>
+                    <option value="99">99% (α = 0.01)</option>
                   </select>
                 </label>
                 <label className="space-y-1 text-xs text-slate-300">
@@ -1587,9 +1615,9 @@ export default function App() {
                             </td>
                             <td className="py-1.5 text-center align-middle">
                               {r.isBlunder ? (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800 font-semibold">Blunder</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-700 font-bold">FLAG</span>
                               ) : (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">OK</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold">OK</span>
                               )}
                             </td>
                           </tr>
